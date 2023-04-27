@@ -2,9 +2,15 @@
 import Jetson.GPIO as GPIO
 import time 
 import cv2
+import threading
 import datetime
 from bmi_mainn import BMI160
 from httppost import GSM
+
+
+
+
+
 
 sensor_bmi = BMI160()
 gsm = GSM()
@@ -16,6 +22,18 @@ GPIO.setmode(GPIO.BOARD)
 GPIO.setwarnings(False)
 GPIO.setup(pir_pin,GPIO.IN)
 GPIO.setup(pir2_pin,GPIO.IN)
+
+
+def gyro_control():
+    if(sensor_bmi.get_gyro_data()):
+            print("bina yıkıldı")
+            
+            thread_image_process.join() #bina yıkıldı ise data göndermeden önce görüntü işlemenin bitmesi beklenecek
+            
+            #bir dosydan kişi sayısı okunacak ????? okunan değer counter person değişkenine atanacak
+            gsm.send_post(counter_person=12,status=1)
+    else:
+            print("bina sağlam")
 
 def gstreamer_pipeline(
     sensor_id=0,
@@ -46,9 +64,6 @@ def gstreamer_pipeline(
 
 
 
-
-
-
     
 def record_camera():
     kayitok = 0
@@ -75,11 +90,7 @@ def record_camera():
                 print("pır 2 tetiklendi")
                 time.sleep(0.5)
 
-        if(sensor_bmi.get_gyro_data()):
-            print("bina yıkıldı")
-            gsm.send_post(counter_person=12,status=1)
-        else:
-            print("bina sağlam")
+        
 
         if(pir1 or pir2):
             print("pırlar tetiklendi kamera aktif ")
@@ -99,13 +110,6 @@ def record_camera():
                 #start_time = datetime.datetime.now()
                 time.sleep(1)
                 while (1):
-                    if(sensor_bmi.get_gyro_data()):
-                        print("bina yıkıldı")
-                        gsm.send_post(counter_person=12,status=1)
-
-
-                    else:
-                        print("bina sağlam")
                         
                     print("sonsuz döngüde okuyor")
                     ret_val, frame = video_capture.read()
@@ -138,7 +142,7 @@ def record_camera():
                             pir2_sec = 0   
                             time.sleep(2)
                             timer2=time.time()
-                            
+                            thread_image_process.start() #görüntü işleme sürecini başlatır ve bir dosyaya son sayıyı yazar
 
                             break 
                     
@@ -153,14 +157,23 @@ def record_camera():
                 video_capture.release()
                 print("video capture not opened")
                  
-                       
-    
-   
+def image_process():
+    pass
+
+
+
+#thread nesnesi oluştur.                
+thread_gyro = threading.Thread(target=gyro_control)
+thread_camera = threading.Thread(target=record_camera)
+thread_image_process = threading.Thread(target=image_process)   
             
  
 
 
 
 if __name__ == "__main__":
-   record_camera()
+    
+    thread_gyro.start()
+    thread_camera.start()
+    #record_camera()
 
