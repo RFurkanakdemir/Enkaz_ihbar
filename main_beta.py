@@ -17,13 +17,15 @@ def gyro_control():
     while(True):
         if(sensor_bmi.get_gyro_data()):
                 print("bina yıkıldı")
-                #bir dosydan kişi sayısı okunacak ????? okunan değer counter person değişkenine atanacak
-                gsm.send_post(counter_person=12,status=1)
+                thread_server.kill()
+                gsm.send_post_earthquake()
+                # burası için baştan bina yıkıldı postu yazılacak.
         else:
                 print("bina sağlam") 
-
 def ServerDataSender():
-    gsm.send_post(counter_person=getTotalAmount,status=1)
+    while(True):
+        gsm.send_post_amount(counter_person=getTotalAmount,status=1)
+        time.sleep(5)
     
 def setTotalAmount(number):
     try:
@@ -116,11 +118,9 @@ def MainCode():
     pid = 1
     
     while(cap.isOpened()):
-    ##for image in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+
         # Read an image from the video source
         ret, frame = cap.read()
-    ##    frame = image.array
-    
         for i in persons:
             i.age_one() #age every person one frame
         #########################
@@ -209,12 +209,6 @@ def MainCode():
         #   DRAW TRAJECTORIES  #
         #########################
         for i in persons:
-    ##        if len(i.getTracks()) >= 2:
-    ##            pts = np.array(i.getTracks(), np.int32)
-    ##            pts = pts.reshape((-1,1,2))
-    ##            frame = cv.polylines(frame,[pts],False,i.getRGB())
-    ##        if i.getId() == 9:
-    ##            print str(i.getX()), ',', str(i.getY())
             cv.putText(frame, str(i.getId()),(i.getX(),i.getY()),font,0.3,i.getRGB(),1,cv.LINE_AA)
             
         #################
@@ -232,11 +226,10 @@ def MainCode():
         cv.putText(frame, str_down ,(10,90),font,0.5,(255,0,0),1,cv.LINE_AA)
         
         cv.imshow('Frame',frame)
-        cv.imshow('Mask',mask)    
+        #cv.imshow('Mask',mask)    
         
     
     ##    rawCapture.truncate(0)
-        #preisonar ESC para salir
         k = cv.waitKey(30) & 0xff
         if k == 27:
             break
@@ -247,10 +240,14 @@ def MainCode():
     #################
     cap.release()
     cv.destroyAllWindows()
-
+    thread_gyro.kill()
+    thread_server.kill()
+    
 thread_gyro = threading.Thread(target=gyro_control)
+thread_server = threading.Thread(target=ServerDataSender())
 
 if __name__ == "__main__":
     thread_gyro.start()
+    thread_server.start()
     MainCode()
 

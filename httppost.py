@@ -4,15 +4,13 @@ import datetime
 
 class GSM:
     def __init__(self):
-
-
-        
         self.mac= "dc1211gu12"
     
    
     
+
     
-    def send_post(self,counter_person,status):
+    def send_post_amount(self,counter_person,status):
         
         ser = serial.Serial('/dev/ttyTHS1', 9600, timeout=1)
         time.sleep(2)
@@ -116,4 +114,6 @@ class GSM:
 
         return 1
 
+    def send_post_earthquake(self):
+        return 0
 	
