@@ -11,7 +11,7 @@ class GSM:
 
     
     def send_post_amount(self,counter_person,status):
-        
+        timer = time.time()
         ser = serial.Serial('/dev/ttyTHS1', 9600, timeout=1)
         time.sleep(2)
         
@@ -27,7 +27,7 @@ class GSM:
         ser.write(b'AT+SAPBR=1,1\r\n')
         response = ser.read(1000)
         print("\n"+str(response)+"\n")
-        time.sleep(5)
+        time.sleep(2)
         
         ser.write(b'AT+SAPBR=2,1\r\n')
         response = ser.read(1000)
@@ -51,13 +51,14 @@ class GSM:
         print("\n"+imei+"\n")
         status = str(status)
         person_count = str(counter_person)
-        date = datetime.datetime.now().strftime("%m/%d/%Y")
-        
+        date = datetime.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+        print("\n"+date+"\n")
         message_url = base_url+imei+"_"+status+"_"+person_count+"_"+date+'"'
         byte_message_url=bytes(message_url,'utf-8')
         ser.write(byte_message_url)
         ser.write(b'\r\n')
-        
+        response = ser.read(1000)
+        print("\n"+str(response)+"\n")
         #ser.write(b'AT+HTTPPARA="URL","https://cihazdata.coware.com.tr/api/cihazdata/giriscikis1/?data=dc1211gu12_1_12_05/04/2024"\r\n')
         #ser.write(message_url)
         #response = ser.read(1000)
@@ -99,21 +100,20 @@ class GSM:
         
         time.sleep(0.5)
         ser.write(b'AT+HTTPACTION=0\r\n')
-        time.sleep(1)
-        response = ser.read(100000)
+        response = ser.read(1000000)
         print("\n"+str(response)+"\n")# HTTP cevabını oku
-        time.sleep(1) # Cevabın hazır olması için bekleyin
         ser.write(b'AT+HTTPREAD\r\n')
-        response = ser.read(100000)
-        time.sleep(5)
+        response = ser.read(1000)
+        time.sleep(0.5)
         print("\n"+str(response)+"\n")
         ser.write(b'AT+HTTPTERM\r\n')
         response = ser.read(1000)
         print("\n"+str(response)+"\n")
         ser.close() 		
-
+        print("geçen sistem süresi = " + str(time.time()-timer) + "saniyedir" )
         return 1
 
     def send_post_earthquake(self):
+        print("deprem oldu looooo")
         return 0
 	

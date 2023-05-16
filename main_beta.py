@@ -13,26 +13,69 @@ from httppost import GSM
 sensor_bmi = BMI160()
 gsm = GSM()
 
-def gyro_control():
-    while(True):
+def ServerDataSender(stop_server_flag):
+    server_timer=time.time()
+    init=0
+    
+    
+    while not stop_server_flag.is_set():
+        
+        if(init ==0):
+        
+            if(time.time()-server_timer>5):
+                print("server data sender loop")
+                gsm.send_post_amount(counter_person=getTotalAmount(),status=0)
+                init=1
+                server_timer=time.time()
+                
+
+        if( time.time() - server_timer > 20 and init == 1):
+            print("server data sender loop")
+            gsm.send_post_amount(counter_person=getTotalAmount(),status=0)
+            server_timer = time.time()
+            
+
+    print("server thread stopped")
+        
+
+
+
+
+def gyro_control(stop_gyro_flag):
+    while not stop_gyro_flag.is_set():
+        
         if(sensor_bmi.get_gyro_data()):
                 print("bina yıkıldı")
-                thread_server.kill()
-                gsm.send_post_earthquake()
+                #thread_server.stop()
+                
+                stop_server_thread()
+                time.sleep(0.5)
+                thread_server.join()
+                
+                gsm.send_post_amount(counter_person=getTotalAmount(),status=1)
+                stop_gyro_thread()
+                
+                #gsm.send_post_earthquake()
                 # burası için baştan bina yıkıldı postu yazılacak.
         else:
+                time.sleep(1)
                 print("bina sağlam") 
-def ServerDataSender():
-    while(True):
-        gsm.send_post_amount(counter_person=getTotalAmount,status=1)
-        time.sleep(5)
     
+    print("gyro thread stopped")
+
+
+
+    
+
+          
 def setTotalAmount(number):
     try:
+        print("dosyaya değer girildi")
         f = open("TotalAmount.afet", "w")
         f.write(str(number))
         f.flush()
         f.close()
+        getTotalAmount()
         return 1
     except:
         print( "Cannot open file")
@@ -44,18 +87,57 @@ def getTotalAmount():
         number=f.read()
         f.flush()
         f.close()
+        print("dosya okundu :"+str(number)+"kişi var" )
         return int(number)
     except:
         print( "Cannot open file")
         return 0
+
+def gstreamer_pipeline(
+    sensor_id=0,
+    capture_width=160,
+    capture_height=120,
+    display_width=640,
+    display_height=480,
+    framerate=30,
+    flip_method=0,
+):
+    return (
+        "nvarguscamerasrc sensor-id=%d !"
+        "video/x-raw(memory:NVMM), width=(int)%d, height=(int)%d, framerate=(fraction)%d/1 ! "
+        "nvvidconv flip-method=%d ! "
+        "video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=(string)BGR ! appsink"
+        % (
+            sensor_id,
+            capture_width,
+            capture_height,
+            framerate,
+            flip_method,
+            display_width,
+            display_height,
+        )
+    )
+
+def stop_server_thread():
+    stop_server_flag.set()
+
+def stop_gyro_thread():
+    stop_gyro_flag.set()
+
     
 def MainCode():
     #Entry and exit counters
+    
     cnt_up   = 0
     cnt_down = 0
+    first_person_amount=0
+    setTotalAmount(str(first_person_amount))
     
     #cap = cv.VideoCapture(0)
-    cap = cv.VideoCapture('Test Files/video2.mp4')
+    #cap = cv.VideoCapture(gstreamer_pipeline(flip_method=0), cv.CAP_GSTREAMER)
+    cap = cv.VideoCapture('peopleCount/Test Files/video2.mp4')
     #camera = PiCamera()
     ##camera.resolution = (160,120)
     ##camera.framerate = 5
@@ -151,7 +233,7 @@ def MainCode():
         #################
         
         # RETR_EXTERNAL returns only extreme outer flags. All child contours are left behind.
-        contours0, hierarchy = cv.findContours(mask2,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
+        _,contours0, hierarchy = cv.findContours(mask2,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE)
         for cnt in contours0:
             area = cv.contourArea(cnt)
             if area > areaTH:
@@ -233,6 +315,8 @@ def MainCode():
         k = cv.waitKey(30) & 0xff
         if k == 27:
             break
+        if(sensor_bmi.get_gyro_data()):
+            break
     #END while(cap.isOpened())
         
     #################
@@ -240,14 +324,28 @@ def MainCode():
     #################
     cap.release()
     cv.destroyAllWindows()
-    thread_gyro.kill()
-    thread_server.kill()
-    
-thread_gyro = threading.Thread(target=gyro_control)
-thread_server = threading.Thread(target=ServerDataSender())
+    #thread_gyro.kill()
+    #thread_server.kill()
+
+
+stop_server_flag= threading.Event()
+stop_gyro_flag = threading.Event()
+thread_server = threading.Thread(target=ServerDataSender,args=(stop_server_flag,))       #thread nesnesi
+thread_gyro = threading.Thread(target=gyro_control,args=(stop_gyro_flag,))          #thread nesnesi
 
 if __name__ == "__main__":
+
+    
     thread_gyro.start()
     thread_server.start()
+    
+    
+   
     MainCode()
+ 
+
+
+
+
+   
 

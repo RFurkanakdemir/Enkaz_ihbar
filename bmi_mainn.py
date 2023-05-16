@@ -62,7 +62,7 @@ class BMI160:
         self.back_data[4] = round (r, 3 )
         self.back_data[5] = round (y,3)
         
-        if(((self.ref[0]> self.back_data[3]+10) or (self.ref[0]<self.back_data[3]-10)) and (self.frstinit==1)):
+        if(((self.ref[0]> self.back_data[3]+9) or (self.ref[0]<self.back_data[3]-9) or (self.ref[1]<self.back_data[4]-9) or (self.ref[1]>self.back_data[4]+10)) and (self.frstinit==1)):
             print("bina yikildi")
             time.sleep(3)
             return 1
